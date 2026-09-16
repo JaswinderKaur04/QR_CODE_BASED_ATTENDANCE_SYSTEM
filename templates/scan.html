@@ -1,0 +1,251 @@
+{% extends "layout.html" %}
+
+{% block title %}Scan QR Code - QR Code Attendance System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                Scan QR Code for Attendance
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <video id="camera" autoplay playsinline muted
+                           style="width: 100%; max-width: 500px; border: 2px solid #ccc; border-radius: 8px; background: #000; display: none;"></video>
+                    <canvas id="canvas" style="display: none;"></canvas>
+                    <div id="placeholder" style="width: 100%; max-width: 500px; height: 250px; border: 2px dashed #ccc; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #666; background: #f8f9fa;">
+                        Click "Start Camera" to begin scanning
+                    </div>
+                </div>
+
+                <div class="text-center mt-3">
+                    <button id="startCamera" class="btn btn-primary btn-lg">Start Camera</button>
+                    <button id="stopCamera" class="btn btn-secondary btn-lg" disabled>Stop Camera</button>
+                    <button id="captureFromWebcam" class="btn btn-success btn-lg" disabled>Capture & Scan</button>
+                </div>
+
+                <hr>
+
+                <div class="text-center">
+                    <h5>Or Upload QR Code Image</h5>
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <input type="file" name="qr_image" id="qrImage" accept="image/*" class="form-control">
+                        </div>
+                        <button type="submit" class="btn btn-warning btn-lg">Upload & Scan</button>
+                    </form>
+                </div>
+
+                <div id="result" class="mt-4"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+var mediaStream = null;
+var cameraRunning = false;
+var scanInterval = null;
+var lastScannedCode = null;
+
+function showMessage(message, type) {
+    type = type || 'info';
+    var resultDiv = document.getElementById('result');
+    resultDiv.innerHTML = '<div class="alert alert-' + type + '">' + message + '</div>';
+}
+
+// Start camera
+document.getElementById('startCamera').addEventListener('click', function() {
+    var video = document.getElementById('camera');
+    var placeholder = document.getElementById('placeholder');
+
+    var constraints = {
+        video: {
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+            facingMode: { ideal: "user" }
+        },
+        audio: false
+    };
+
+    navigator.mediaDevices.getUserMedia(constraints)
+        .then(function(stream) {
+            mediaStream = stream;
+            video.srcObject = stream;
+            video.onloadedmetadata = function() {
+                video.play();
+            };
+            video.style.display = 'block';
+            placeholder.style.display = 'none';
+
+            cameraRunning = true;
+            document.getElementById('startCamera').disabled = true;
+            document.getElementById('stopCamera').disabled = false;
+            document.getElementById('captureFromWebcam').disabled = false;
+
+            showMessage('Camera started. Scanning for QR codes...', 'success');
+
+            // Start continuous scanning
+            startContinuousScanning();
+        })
+        .catch(function(err) {
+            const msg = 'Camera error: ' + err.message;
+            showMessage(msg, 'danger');
+            console.error('Camera error:', err);
+        });
+});
+
+// Stop camera
+document.getElementById('stopCamera').addEventListener('click', function() {
+    stopCamera();
+});
+
+function stopCamera() {
+    if (scanInterval) {
+        clearInterval(scanInterval);
+        scanInterval = null;
+    }
+
+    if (mediaStream) {
+        mediaStream.getTracks().forEach(function(track) { track.stop(); });
+        mediaStream = null;
+    }
+
+    var video = document.getElementById('camera');
+    var placeholder = document.getElementById('placeholder');
+
+    video.style.display = 'none';
+    video.srcObject = null;
+    placeholder.style.display = 'flex';
+
+    cameraRunning = false;
+    document.getElementById('startCamera').disabled = false;
+    document.getElementById('stopCamera').disabled = true;
+    document.getElementById('captureFromWebcam').disabled = true;
+
+    showMessage('Camera stopped.', 'info');
+}
+
+// Start continuous scanning
+function startContinuousScanning() {
+    if (scanInterval) {
+        clearInterval(scanInterval);
+    }
+
+    scanInterval = setInterval(function() {
+        if (!cameraRunning) return;
+        captureAndScan();
+    }, 800);
+}
+
+// Capture frame and scan for QR code
+function captureAndScan() {
+    if (!cameraRunning) return;
+
+    var video = document.getElementById('camera');
+    var canvas = document.getElementById('canvas');
+
+    if (!video.videoWidth || !video.videoHeight) return;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Convert canvas to base64 and send to backend
+    var dataURL = canvas.toDataURL('image/jpeg', 0.8);
+
+    fetch('/api/scan_frame', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: dataURL })
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.status === 'success') {
+            if (lastScannedCode === data.employee_id) {
+                return;
+            }
+            lastScannedCode = data.employee_id;
+            stopCamera();
+            markAttendance(data.employee_id);
+        } else if (data.status === 'no_qr') {
+            // No QR in this frame, continue scanning
+        }
+    })
+    .catch(function(err) {
+        console.error('Scan error:', err);
+    });
+}
+
+// Capture & Scan button click handler
+document.getElementById('captureFromWebcam').addEventListener('click', function() {
+    if (!cameraRunning) {
+        showMessage('Camera is not running. Start the camera first.', 'warning');
+        return;
+    }
+    captureAndScan();
+});
+
+// Mark attendance via API
+function markAttendance(employeeId) {
+    fetch('/api/mark_attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employee_id: employeeId })
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        var alertClass = 'info';
+        if (data.status === 'marked') alertClass = 'success';
+        else if (data.status === 'already_marked') alertClass = 'warning';
+        else if (data.status === 'not_found') alertClass = 'danger';
+
+        showMessage(data.message, alertClass);
+    })
+    .catch(function(err) {
+        showMessage('Error: ' + err, 'danger');
+        console.error('Fetch error:', err);
+    });
+}
+
+// Handle image upload
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var fileInput = document.getElementById('qrImage');
+    var file = fileInput.files[0];
+
+    if (!file) {
+        showMessage('Please select an image file.', 'warning');
+        return;
+    }
+
+    var formData = new FormData();
+    formData.append('qr_image', file);
+
+    showMessage('Scanning uploaded image...', 'info');
+
+    fetch('/api/scan_qr', {
+        method: 'POST',
+        body: formData
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.status === 'success') {
+            lastScannedCode = data.employee_id;
+            markAttendance(data.employee_id);
+        } else {
+            showMessage(data.message, 'danger');
+        }
+    })
+    .catch(function(err) {
+        showMessage('Error: ' + err, 'danger');
+        console.error('Upload error:', err);
+    });
+});
+</script>
+{% endblock %}

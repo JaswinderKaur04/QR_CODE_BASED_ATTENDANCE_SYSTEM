@@ -1,0 +1,60 @@
+{% extends "layout.html" %}
+
+{% block title %}Analytics Dashboard - QR Code Attendance System{% endblock %}
+
+{% block head_scripts %}
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Attendance Analytics Dashboard</h2>
+
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                Daily Attendance Chart
+            </div>
+            <div class="card-body">
+                {{ daily_chart|safe }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                Employee-wise Attendance
+            </div>
+            <div class="card-body">
+                {{ employee_chart|safe }}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                Department-wise Distribution
+            </div>
+            <div class="card-body">
+                {{ department_chart|safe }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                Attendance Summary
+            </div>
+            <div class="card-body">
+                {{ summary|safe }}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

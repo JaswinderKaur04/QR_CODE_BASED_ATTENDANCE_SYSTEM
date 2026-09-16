@@ -1,0 +1,48 @@
+{% extends "layout.html" %}
+
+{% block title %}Add Employee - QR Code Attendance System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6 mx-auto">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                Add New Employee
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('add_employee') }}">
+                    <div class="mb-3">
+                        <label for="employee_id" class="form-label">Employee ID *</label>
+                        <input type="text" name="employee_id" id="employee_id" class="form-control" required placeholder="e.g., EMP001">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Full Name *</label>
+                        <input type="text" name="name" id="name" class="form-control" required placeholder="e.g., John Doe">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="department" class="form-label">Department *</label>
+                        <input type="text" name="department" id="department" class="form-control" required placeholder="e.g., Engineering">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" name="email" id="email" class="form-control" placeholder="e.g., john.doe@company.com">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">Phone</label>
+                        <input type="text" name="phone" id="phone" class="form-control" placeholder="e.g., +1234567890">
+                    </div>
+
+                    <div class="mt-4 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">Add Employee</button>
+                        <a href="{{ url_for('employees_page') }}" class="btn btn-secondary btn-lg">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

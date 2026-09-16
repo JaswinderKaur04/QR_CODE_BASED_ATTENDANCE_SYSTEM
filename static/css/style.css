@@ -1,0 +1,60 @@
+body {
+    background-color: #f8f9fa;
+    margin-bottom: 60px;
+}
+
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.navbar {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 55px;
+
+    background-color: #343a40;
+    color: white;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 0;
+    margin: 0;
+    z-index: 1000;
+}
+/* Ensure main content is not hidden behind footer */
+.container {
+    padding-bottom: 120px;
+}
+
+/* Ensure buttons are always clickable */
+.btn {
+    cursor: pointer;
+    pointer-events: auto;
+    position: relative;
+    z-index: 10;
+    min-width: 120px;
+}
+
+/* Card body needs enough padding to avoid footer overlap */
+.card-body {
+    padding-bottom: 2rem;
+}
+
+/* Form button container */
+.d-flex.gap-2 {
+    margin-top: 1.5rem;
+    padding-bottom: 1rem;
+}
+
+.table th {
+    background-color: #f8f9fa;
+}
