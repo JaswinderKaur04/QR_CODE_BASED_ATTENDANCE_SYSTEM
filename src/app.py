@@ -21,8 +21,9 @@ Provides a web dashboard for scanning QR codes, viewing attendance, and analytic
 import os
 import sys
 import base64
+from functools import wraps
 from io import BytesIO
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from PIL import Image
 
 # Project root directory (parent of src/)
@@ -35,6 +36,8 @@ if PROJECT_ROOT not in sys.path:
 from src.attendance_manager import AttendanceManager
 from src.qr_generator import generate_qr_code, generate_qr_codes_for_all_employees
 from src.analytics import AttendanceAnalytics
+from src.auth_manager import AuthManager
+from src.database import init_db, hash_password
 
 app = Flask(
     __name__,
@@ -46,25 +49,142 @@ app.secret_key = os.urandom(24)
 # Initialize components
 attendance_manager = AttendanceManager()
 analytics = AttendanceAnalytics()
+auth_manager = AuthManager()
+
+# Initialize database and create default admin
+init_db()
+auth_manager.create_default_admin()
 
 
-# ---------- Routes ----------
+# ---------- Authentication Helpers ----------
+
+def login_required(f):
+    """Decorator to require login for accessing a route."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "user_id" not in session:
+            flash("Please log in to access this page.", "warning")
+            return redirect(url_for("login_page"))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def admin_required(f):
+    """Decorator to require admin role for accessing a route."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "user_id" not in session:
+            flash("Please log in to access this page.", "warning")
+            return redirect(url_for("login_page"))
+        if session.get("user_role") != "admin":
+            flash("Access denied. Admin privileges required.", "danger")
+            return redirect(url_for("scan_page"))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def get_current_user():
+    """Get the currently logged-in user from session."""
+    if "user_id" in session:
+        return auth_manager.get_user_by_id(session["user_id"])
+    return None
+
+
+# ---------- Authentication Routes ----------
+
+@app.route("/login", methods=["GET", "POST"])
+def login_page():
+    """Handle user login."""
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+
+        if not username or not password:
+            flash("Username and password are required.", "danger")
+            return render_template("login.html")
+
+        user = auth_manager.verify_login(username, password)
+        if user:
+            session["user_id"] = user["id"]
+            session["username"] = user["username"]
+            session["user_role"] = user["role"]
+            session["employee_id"] = user["employee_id"]
+
+            flash("Welcome back, " + user["username"] + "!", "success")
+            # Redirect based on role
+            if user["role"] == "admin":
+                return redirect(url_for("index"))
+            else:
+                return redirect(url_for("scan_page"))
+        else:
+            flash("Invalid username or password.", "danger")
+            return render_template("login.html")
+
+    return render_template("login.html")
+
+
+@app.route("/logout")
+def logout_page():
+    """Log out the current user."""
+    session.clear()
+    flash("You have been logged out.", "info")
+    return redirect(url_for("login_page"))
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register_page():
+    """Handle user registration."""
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+        confirm_password = request.form.get("confirm_password", "").strip()
+        employee_id = request.form.get("employee_id", "").strip()
+
+        if not username or not password:
+            flash("Username and password are required.", "danger")
+            return render_template("register.html")
+
+        if password != confirm_password:
+            flash("Passwords do not match.", "danger")
+            return render_template("register.html")
+
+        if len(password) < 4:
+            flash("Password must be at least 4 characters.", "danger")
+            return render_template("register.html")
+
+        success = auth_manager.create_employee_user(employee_id, username, password)
+        if success:
+            flash("Account created successfully. Please log in.", "success")
+            return redirect(url_for("login_page"))
+        else:
+            flash("Username already exists.", "danger")
+            return render_template("register.html")
+
+    return render_template("register.html")
+
+
+# ---------- Protected Routes ----------
 
 @app.route("/")
+@admin_required
 def index():
     """Render the home page with a summary of today's attendance."""
     stats = attendance_manager.get_statistics()
     today_records = attendance_manager.get_today_attendance()
-    return render_template("index.html", stats=stats, today_records=today_records)
+    current_user = get_current_user()
+    return render_template("index.html", stats=stats, today_records=today_records, user=current_user)
 
 
 @app.route("/scan")
+@login_required
 def scan_page():
     """Render the QR code scanning page."""
-    return render_template("scan.html")
+    current_user = get_current_user()
+    return render_template("scan.html", user=current_user)
 
 
 @app.route("/employees")
+@admin_required
 def employees_page():
     """Render the employee management page."""
     employees = attendance_manager.get_all_employees()
@@ -72,6 +192,7 @@ def employees_page():
 
 
 @app.route("/add_employee", methods=["GET", "POST"])
+@admin_required
 def add_employee():
     """Handle adding a new employee."""
     if request.method == "POST":
@@ -101,6 +222,7 @@ def add_employee():
 
 
 @app.route("/generate_qr_codes")
+@admin_required
 def generate_qr_codes():
     """Generate QR codes for all employees."""
     results = generate_qr_codes_for_all_employees()
@@ -109,11 +231,13 @@ def generate_qr_codes():
 
 
 @app.route("/attendance")
+@admin_required
 def attendance_page():
     """Render the attendance records page."""
     date_filter = request.args.get("date", None)
     records = attendance_manager.get_attendance_records(date_str=date_filter)
-    return render_template("attendance.html", records=records, date_filter=date_filter)
+    current_user = get_current_user()
+    return render_template("attendance.html", records=records, date_filter=date_filter, user=current_user)
 
 
 @app.route("/api/mark_attendance", methods=["POST"])
@@ -136,6 +260,7 @@ def api_mark_attendance():
 
 
 @app.route("/analytics")
+@admin_required
 def analytics_page():
     """Render the analytics dashboard with charts."""
     daily_chart = analytics.daily_attendance_chart()

@@ -104,3 +104,7 @@ Generates QR codes for all employees in the database.
 
 ## License
 This project uses only free/open-source libraries. No paid APIs, images, or services are used.
+
+## AI Development Assistance
+
+- Kilo Code Agent — assisted with code generation, debugging, documentation, and development workflow.

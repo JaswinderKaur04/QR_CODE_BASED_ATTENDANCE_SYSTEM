@@ -5,6 +5,7 @@ Handles SQLite database connection and table creation.
 import sqlite3
 from contextlib import contextmanager
 import os
+import hashlib
 
 # Database file path
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "attendance.db")
@@ -68,8 +69,26 @@ def init_db():
         ON attendance(employee_id, date)
     """)
 
+    # Users table for authentication
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'employee',
+            employee_id TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (employee_id) REFERENCES employees(employee_id)
+        )
+    """)
+
     conn.commit()
     conn.close()
+
+
+def hash_password(password):
+    """Hash a password using SHA-256."""
+    return hashlib.sha256(password.encode('utf-8')).hexdigest()
 
 
 if __name__ == "__main__":
