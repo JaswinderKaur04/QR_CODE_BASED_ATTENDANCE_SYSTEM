@@ -10,6 +10,29 @@
 <h2 class="mb-4">Attendance Analytics Dashboard</h2>
 
 <div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                Punctuality Distribution
+            </div>
+            <div class="card-body">
+                {{ punctuality_chart|safe }}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                Working Hours per Employee
+            </div>
+            <div class="card-body">
+                {{ working_hours_chart|safe }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
     <div class="col-12 mb-4">
         <div class="card">
             <div class="card-header bg-dark text-white">

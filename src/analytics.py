@@ -29,7 +29,7 @@ class AttendanceAnalytics:
         records = self.manager.get_attendance_records(date_str=date_str)
         if not records:
             return pd.DataFrame(
-                columns=["id", "employee_id", "date", "time_in", "status", "name", "department"]
+                columns=["id", "employee_id", "date", "time_in", "time_out", "working_hours", "punctuality", "status", "name", "department"]
             )
         df = pd.DataFrame(records)
         return df
@@ -175,13 +175,114 @@ class AttendanceAnalytics:
         present_counts = df.groupby("employee_id").agg(
             days_present=("date", "count"),
             last_present=("date", "max"),
+            avg_working_hours=("working_hours", "mean"),
         ).reset_index()
 
         summary = emp_df.merge(present_counts, on="employee_id", how="left")
         summary["days_present"] = summary["days_present"].fillna(0).astype(int)
         summary["last_present"] = summary["last_present"].fillna("Never")
+        summary["avg_working_hours"] = summary["avg_working_hours"].round(2)
 
-        return summary[["employee_id", "name", "department", "days_present", "last_present"]]
+        return summary[["employee_id", "name", "department", "days_present", "avg_working_hours", "last_present"]]
+
+    def working_hours_chart(self):
+        """
+        Generate a bar chart showing working hours per employee.
+
+        Returns:
+            plotly.graph_objects.Figure: A bar chart figure.
+        """
+        df = self.get_attendance_dataframe()
+
+        if df.empty or "working_hours" not in df.columns:
+            fig = go.Figure()
+            fig.add_annotation(
+                text="No working hours data available",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, xanchor="center", yanchor="middle",
+                showarrow=False
+            )
+            fig.update_layout(title="Working Hours per Employee")
+            return fig
+
+        # Filter to records with working hours
+        df_with_hours = df[df["working_hours"].notna()]
+
+        if df_with_hours.empty:
+            fig = go.Figure()
+            fig.add_annotation(
+                text="No check-out records available",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, xanchor="center", yanchor="middle",
+                showarrow=False
+            )
+            fig.update_layout(title="Working Hours per Employee")
+            return fig
+
+        # Group by employee and calculate average working hours
+        hours_summary = df_with_hours.groupby(["employee_id", "name", "department"]).agg(
+            avg_hours=("working_hours", "mean"),
+            total_hours=("working_hours", "sum"),
+            days_worked=("date", "count")
+        ).reset_index()
+
+        hours_summary = hours_summary.sort_values("avg_hours", ascending=False)
+
+        fig = px.bar(
+            hours_summary,
+            x="name",
+            y="avg_hours",
+            color="department",
+            title="Average Working Hours per Employee",
+            labels={
+                "name": "Employee Name",
+                "avg_hours": "Average Working Hours",
+                "department": "Department"
+            },
+            hover_data=["employee_id", "total_hours", "days_worked"],
+        )
+        fig.update_layout(xaxis_tickangle=-45, bargap=0.2)
+        return fig
+
+    def punctuality_chart(self):
+        """
+        Generate a pie chart showing punctuality distribution (Present, Late, Absent).
+
+        Returns:
+            plotly.graph_objects.Figure: A pie chart figure.
+        """
+        df = self.get_attendance_dataframe()
+
+        if df.empty or "punctuality" not in df.columns:
+            fig = go.Figure()
+            fig.add_annotation(
+                text="No punctuality data available",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, xanchor="center", yanchor="middle",
+                showarrow=False
+            )
+            fig.update_layout(title="Punctuality Distribution")
+            return fig
+
+        # Count by punctuality status
+        punctuality_counts = df["punctuality"].fillna("Present").value_counts().reset_index()
+        punctuality_counts.columns = ["status", "count"]
+
+        color_map = {
+            "Present": "#28a745",
+            "Late": "#ffc107",
+            "Absent": "#dc3545"
+        }
+
+        fig = px.pie(
+            punctuality_counts,
+            values="count",
+            names="status",
+            title="Punctuality Distribution",
+            color_discrete_map=color_map,
+        )
+        fig.update_traces(textposition="inside", textinfo="percent+label")
+        return fig
 
     def get_html_fig(self, fig):
         """

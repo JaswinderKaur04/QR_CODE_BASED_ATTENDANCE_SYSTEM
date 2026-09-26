@@ -10,6 +10,18 @@
                 Scan QR Code for Attendance
             </div>
             <div class="card-body">
+                <!-- Mode Selection -->
+                <div class="text-center mb-4">
+                    <label class="fw-bold me-2">Scan Mode:</label>
+                    <div class="btn-group" role="group">
+                        <input type="radio" class="btn-check" name="scanMode" id="modeCheckIn" value="check_in" checked>
+                        <label class="btn btn-success" for="modeCheckIn">Check-In</label>
+
+                        <input type="radio" class="btn-check" name="scanMode" id="modeCheckOut" value="check_out">
+                        <label class="btn btn-warning" for="modeCheckOut">Check-Out</label>
+                    </div>
+                </div>
+
                 <div class="text-center mb-3">
                     <video id="camera" autoplay playsinline muted
                            style="width: 100%; max-width: 500px; border: 2px solid #ccc; border-radius: 8px; background: #000; display: none;"></video>
@@ -193,17 +205,20 @@ document.getElementById('captureFromWebcam').addEventListener('click', function(
 
 // Mark attendance via API
 function markAttendance(employeeId) {
+    var mode = getSelectedMode();
     fetch('/api/mark_attendance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employee_id: employeeId })
+        body: JSON.stringify({ employee_id: employeeId, action: mode })
     })
     .then(function(response) { return response.json(); })
     .then(function(data) {
         var alertClass = 'info';
         if (data.status === 'marked') alertClass = 'success';
+        else if (data.status === 'checked_out') alertClass = 'success';
         else if (data.status === 'already_marked') alertClass = 'warning';
         else if (data.status === 'not_found') alertClass = 'danger';
+        else if (data.status === 'error') alertClass = 'danger';
 
         showMessage(data.message, alertClass);
     })
@@ -211,6 +226,11 @@ function markAttendance(employeeId) {
         showMessage('Error: ' + err, 'danger');
         console.error('Fetch error:', err);
     });
+}
+
+function getSelectedMode() {
+    var modes = document.querySelectorAll('input[name="scanMode"]:checked');
+    return modes.length > 0 ? modes[0].value : 'check_in';
 }
 
 // Handle image upload

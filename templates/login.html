@@ -1,47 +1,70 @@
 {% extends "layout.html" %}
 
-{% block title %}Login - QR Code Attendance System{% endblock %}
+{% block title %}Sign in - QR Code Attendance System{% endblock %}
+
+{% block body_class %} class="auth-page"{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-5">
-        <div class="card">
-            <div class="card-header bg-dark text-white text-center">
-                <h4>Login</h4>
+<main class="auth-shell">
+    <section class="auth-card" aria-label="Sign in to the attendance system">
+        <div class="auth-visual">
+            <div class="auth-visual-content">
+                <div class="auth-brand-mark" aria-hidden="true">QR</div>
+                <p class="auth-eyebrow">Employee Attendance</p>
+                <h1>Track every moment with confidence.</h1>
+                <p class="auth-visual-copy">A fast, secure way to manage check-ins, check-outs, and team attendance from one place.</p>
+
+                <div class="auth-visual-list">
+                    <div class="auth-visual-list-item">
+                        <span class="auth-check" aria-hidden="true"></span>
+                        <span>Quick QR code scanning</span>
+                    </div>
+                    <div class="auth-visual-list-item">
+                        <span class="auth-check" aria-hidden="true"></span>
+                        <span>Clear attendance insights</span>
+                    </div>
+                    <div class="auth-visual-list-item">
+                        <span class="auth-check" aria-hidden="true"></span>
+                        <span>Simple employee management</span>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
+            <div class="auth-visual-pattern" aria-hidden="true"></div>
+        </div>
+
+        <div class="auth-form-panel">
+            <div class="auth-form-content">
+                <div class="auth-mobile-brand" aria-hidden="true">QR</div>
+                <div class="auth-heading">
+                    <h2>Welcome back</h2>
+                    <p>Sign in to continue to your attendance dashboard.</p>
+                </div>
+
                 <form method="POST" action="{{ url_for('login_page') }}">
-                    <div class="mb-3">
-                        <label for="username" class="form-label">Username</label>
-                        <input type="text" name="username" id="username" class="form-control" required autofocus placeholder="Enter your username">
+                    <div class="auth-field">
+                        <label for="username">Username</label>
+                        <input type="text" name="username" id="username" class="auth-input" required autofocus autocomplete="username" placeholder="Enter your username">
                     </div>
 
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
-                        <input type="password" name="password" id="password" class="form-control" required placeholder="Enter your password">
+                    <div class="auth-field">
+                        <label for="password">Password</label>
+                        <input type="password" name="password" id="password" class="auth-input" required autocomplete="current-password" placeholder="Enter your password">
                     </div>
 
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary btn-lg">Login</button>
-                    </div>
+                    <button type="submit" class="auth-submit">
+                        Sign in
+                        <span aria-hidden="true">→</span>
+                    </button>
                 </form>
 
-                <hr>
+                <div class="auth-divider"><span>or</span></div>
 
-                <div class="text-center">
-                    <p class="mb-0">Don't have an account?</p>
-                    <a href="{{ url_for('register_page') }}" class="btn btn-outline-secondary">Register</a>
-                </div>
-
-                <div class="mt-3 p-3 bg-light rounded">
-                    <small class="text-muted">
-                        <strong>Demo Accounts:</strong><br>
-                        Admin: admin / admin123<br>
-                        Employee: Create your account via Register
-                    </small>
-                </div>
+                <a class="auth-register" href="{{ url_for('register_page') }}">
+                    Create a new account
+                    <span aria-hidden="true">→</span>
+                </a>
             </div>
         </div>
-    </div>
-</div>
+    </section>
+</main>
 {% endblock %}

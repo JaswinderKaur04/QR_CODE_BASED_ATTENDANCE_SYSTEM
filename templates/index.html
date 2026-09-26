@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="row">
-    <div class="col-md-4">
+    <div class="col-md-2">
         <div class="card text-white bg-primary mb-3">
             <div class="card-header">Total Employees</div>
             <div class="card-body">
@@ -12,7 +12,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-2">
         <div class="card text-white bg-success mb-3">
             <div class="card-header">Present Today</div>
             <div class="card-body">
@@ -20,11 +20,35 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card text-white bg-info mb-3">
-            <div class="card-header">Date</div>
+    <div class="col-md-2">
+        <div class="card text-white bg-warning mb-3">
+            <div class="card-header">Late Today</div>
             <div class="card-body">
-                <h4 class="display-6">{{ stats.date }}</h4>
+                <h1 class="display-4">{{ stats.late_today }}</h1>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card text-white bg-danger mb-3">
+            <div class="card-header">Absent Today</div>
+            <div class="card-body">
+                <h1 class="display-4">{{ stats.absent_today }}</h1>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card text-white bg-info mb-3">
+            <div class="card-header">Checked Out</div>
+            <div class="card-body">
+                <h1 class="display-4">{{ stats.checked_out_today }}</h1>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card text-white bg-secondary mb-3">
+            <div class="card-header">Avg Working Hrs</div>
+            <div class="card-body">
+                <h4 class="display-6">{{ "%.2f"|format(stats.avg_working_hours_today) }} hrs</h4>
             </div>
         </div>
     </div>
@@ -45,6 +69,9 @@
                             <th>Name</th>
                             <th>Department</th>
                             <th>Time In</th>
+                            <th>Time Out</th>
+                            <th>Working Hours</th>
+                            <th>Punctuality</th>
                             <th>Status</th>
                         </tr>
                     </thead>
@@ -54,8 +81,25 @@
                             <td>{{ record.employee_id }}</td>
                             <td>{{ record.name }}</td>
                             <td>{{ record.department }}</td>
-                            <td>{{ record.time_in }}</td>
-                            <td><span class="badge bg-success">{{ record.status }}</span></td>
+                            <td>{{ record.time_in or '-' }}</td>
+                            <td>{{ record.time_out or '-' }}</td>
+                            <td>
+                                {% if record.working_hours %}
+                                    {{ "%.2f"|format(record.working_hours) }} hrs
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if record.punctuality == 'Late' %}
+                                    <span class="badge bg-warning">Late</span>
+                                {% elif record.punctuality == 'Absent' %}
+                                    <span class="badge bg-danger">Absent</span>
+                                {% else %}
+                                    <span class="badge bg-success">{{ record.punctuality or 'Present' }}</span>
+                                {% endif %}
+                            </td>
+                            <td><span class="badge bg-secondary">{{ record.status }}</span></td>
                         </tr>
                         {% endfor %}
                     </tbody>

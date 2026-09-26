@@ -37,6 +37,7 @@ from src.attendance_manager import AttendanceManager
 from src.qr_generator import generate_qr_code, generate_qr_codes_for_all_employees
 from src.analytics import AttendanceAnalytics
 from src.auth_manager import AuthManager
+from src.settings_manager import SettingsManager
 from src.database import init_db, hash_password
 
 app = Flask(
@@ -50,6 +51,7 @@ app.secret_key = os.urandom(24)
 attendance_manager = AttendanceManager()
 analytics = AttendanceAnalytics()
 auth_manager = AuthManager()
+settings_manager = SettingsManager()
 
 # Initialize database and create default admin
 init_db()
@@ -244,8 +246,9 @@ def attendance_page():
 def api_mark_attendance():
     """
     API endpoint to mark attendance from a scanned QR code.
+    Supports both check-in and check-out.
 
-    Expects JSON: {"employee_id": "EMP001"}
+    Expects JSON: {"employee_id": "EMP001", "action": "check_in|check_out"}
 
     Returns:
         JSON: Result with status and message.
@@ -255,7 +258,11 @@ def api_mark_attendance():
         return jsonify({"status": "error", "message": "Missing employee_id"}), 400
 
     employee_id = data["employee_id"].strip()
-    result = attendance_manager.mark_attendance(employee_id)
+    action = data.get("action", "check_in").strip().lower()
+    if action not in ("check_in", "check_out"):
+        action = "check_in"
+
+    result = attendance_manager.mark_attendance(employee_id, action=action)
     return jsonify(result)
 
 
@@ -266,6 +273,8 @@ def analytics_page():
     daily_chart = analytics.daily_attendance_chart()
     employee_chart = analytics.employee_wise_chart()
     department_chart = analytics.department_wise_chart()
+    working_hours_chart = analytics.working_hours_chart()
+    punctuality_chart = analytics.punctuality_chart()
     summary = analytics.attendance_summary_table()
 
     return render_template(
@@ -273,6 +282,8 @@ def analytics_page():
         daily_chart=daily_chart.to_html(full_html=False, include_plotlyjs=False),
         employee_chart=employee_chart.to_html(full_html=False, include_plotlyjs=False),
         department_chart=department_chart.to_html(full_html=False, include_plotlyjs=False),
+        working_hours_chart=working_hours_chart.to_html(full_html=False, include_plotlyjs=False),
+        punctuality_chart=punctuality_chart.to_html(full_html=False, include_plotlyjs=False),
         summary=summary.to_html(classes="table table-striped", index=False),
     )
 
@@ -368,6 +379,42 @@ def qr_code_image(filename):
     from flask import send_from_directory
     qr_dir = os.path.join(PROJECT_ROOT, "qr_codes")
     return send_from_directory(qr_dir, filename)
+
+
+@app.route("/settings", methods=["GET", "POST"])
+@admin_required
+def settings_page():
+    """Handle office settings configuration."""
+    if request.method == "POST":
+        start_time = request.form.get("office_start_time", "09:00").strip()
+        end_time = request.form.get("office_end_time", "18:00").strip()
+        late_threshold = request.form.get("late_threshold_minutes", "15").strip()
+        auto_absent = request.form.get("auto_mark_absent", "off")
+
+        settings_manager.update_settings({
+            "office_start_time": start_time,
+            "office_end_time": end_time,
+            "late_threshold_minutes": late_threshold,
+            "auto_mark_absent": "true" if auto_absent == "on" else "false",
+        })
+        flash("Settings updated successfully.", "success")
+        return redirect(url_for("settings_page"))
+
+    settings = settings_manager.get_all_settings()
+    current_user = get_current_user()
+    return render_template("settings.html", settings=settings, user=current_user)
+
+
+@app.route("/api/mark_absent", methods=["POST"])
+def api_mark_absent():
+    """API endpoint to manually mark absent employees for today."""
+    if not session.get("user_id"):
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    if session.get("user_role") != "admin":
+        return jsonify({"status": "error", "message": "Admin privileges required"}), 403
+
+    count = attendance_manager.mark_absent_employees()
+    return jsonify({"status": "success", "message": f"Marked {count} employees as absent.", "count": count})
 
 
 if __name__ == "__main__":

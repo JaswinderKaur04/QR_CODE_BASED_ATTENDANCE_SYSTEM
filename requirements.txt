@@ -7,4 +7,6 @@ numpy>=1.26.0
 flask>=3.0.0
 flask-sqlalchemy>=3.0.5
 sqlalchemy>=2.0.23
+gspread>=6.0.0
+google-auth>=2.31.0
 pyzbar>=0.1.9

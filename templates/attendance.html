@@ -26,6 +26,9 @@
                     <th>Department</th>
                     <th>Date</th>
                     <th>Time In</th>
+                    <th>Time Out</th>
+                    <th>Working Hours</th>
+                    <th>Punctuality</th>
                     <th>Status</th>
                 </tr>
             </thead>
@@ -36,8 +39,25 @@
                     <td>{{ record.name }}</td>
                     <td>{{ record.department }}</td>
                     <td>{{ record.date }}</td>
-                    <td>{{ record.time_in }}</td>
-                    <td><span class="badge bg-success">{{ record.status }}</span></td>
+                    <td>{{ record.time_in or '-' }}</td>
+                    <td>{{ record.time_out or '-' }}</td>
+                    <td>
+                        {% if record.working_hours %}
+                            {{ "%.2f"|format(record.working_hours) }} hrs
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if record.punctuality == 'Late' %}
+                            <span class="badge bg-warning">Late</span>
+                        {% elif record.punctuality == 'Absent' %}
+                            <span class="badge bg-danger">Absent</span>
+                        {% else %}
+                            <span class="badge bg-success">{{ record.punctuality or 'Present' }}</span>
+                        {% endif %}
+                    </td>
+                    <td><span class="badge bg-secondary">{{ record.status }}</span></td>
                 </tr>
                 {% endfor %}
             </tbody>

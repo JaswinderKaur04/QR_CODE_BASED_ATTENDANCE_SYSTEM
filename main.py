@@ -6,6 +6,7 @@ Usage:
     python main.py scan      # Start webcam scanning
     python main.py sample    # Populate sample data
     python main.py qr        # Generate QR codes for all employees
+    python main.py sync      # Upload all attendance records to Google Sheets
 """
 import sys
 import os
@@ -50,6 +51,14 @@ def main():
         print(f"Generated {len(results)} QR codes.")
         for emp_id, path in results.items():
             print(f"  {emp_id} -> {path}")
+
+    elif command == "sync":
+        from src.google_sheets_sync import sync_attendance_to_google_sheets
+
+        result = sync_attendance_to_google_sheets()
+        print(result["message"])
+        if result.get("status") == "error":
+            return 1
 
     else:
         print(f"Unknown command: {command}")
